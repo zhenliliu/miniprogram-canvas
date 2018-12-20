@@ -1,0 +1,27 @@
+{
+  "name": "miniprogram-canvas",
+  "version": "0.0.1",
+  "description": "",
+  "keywords": [
+    "miniprogram",
+    "canvas",
+    "canvas-to-image"
+  ],
+  "author": "刘振利",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhenliliu/miniprogram-canvas.git"
+  },
+  "main": "miniprogram_dist/index.js",
+  "miniprogram": "miniprogram_dist",
+  "devDependencies": {},
+  "dependencies": {},
+  "bugs": {
+    "url": "https://github.com/zhenliliu/miniprogram-canvas/issues"
+  },
+  "homepage": "https://github.com/zhenliliu/miniprogram-canvas#readme",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "ISC"
+}
