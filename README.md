@@ -65,7 +65,7 @@
     }
   })
 ```
-#### 相应的 index.wxml页面添加一下代码
+#### 目前受小程序的限制，还不能动态的创建添加标签，所以需要相应的wxml页面添加以下代码
 ```xml
    <!--canvas-id是自己定义的，此处canvas-id是什么，option配置文件 canvasId 就是什么-->
   <canvas canvas-id="canvas" style="height: {{canvasHeight}}px; width: {{canvasWidth}}px;position: absolute;left: -100000px"></canvas>
