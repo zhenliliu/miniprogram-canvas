@@ -9,11 +9,11 @@
   let canvas = new Canvas(this,  {
       // 画布的ID
       canvasId: 'canvas',
-      // 是否使用图片做背景，如果为true 则传入的imgArr的最后一张为背景图片
+      // 是否使用图片做背景，如果为true 则传入的imgArr的最后一张为背景图片，如果使用图片做北京，则canvas的宽高为图片的宽高
       useBgImage: false,
-      // 画布的宽度 缺省 750 （单位： px）
+      // 画布的宽度 缺省 750 （单位： px） 如果useBgImage为true，此属性值无效
       width: 750,
-      // 画布的高度 缺省 1334 (单位： px）
+      // 画布的高度 缺省 1334 (单位： px） 如果useBgImage为true，此属性值无效
       height: 1334,
       // 绘制超时时间
       timeout: 10000,
