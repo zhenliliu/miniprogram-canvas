@@ -9,7 +9,7 @@
   let canvas = new Canvas(this,  {
       // 画布的ID
       canvasId: 'canvas',
-      // 是否使用图片做背景，如果为true 则传入的imgArr的第一张为背景图片
+      // 是否使用图片做背景，如果为true 则传入的imgArr的最后一张为背景图片
       useBgImage: false,
       // 画布的宽度 缺省 750 （单位： px）
       width: 750,
