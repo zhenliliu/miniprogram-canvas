@@ -65,6 +65,11 @@
     }
   })
 ```
+#### 相应的 index.wxml页面添加一下代码
+```xml
+   <!--canvas-id是自己定义的，此处canvas-id是什么，option配置文件 canvasId 就是什么-->
+  <canvas canvas-id="canvas" style="height: {{canvasHeight}}px; width: {{canvasWidth}}px;position: absolute;left: -100000px"></canvas>
+```
 #### 元素共有属性
 属性 | 元素 | 值 | 值类型 | 必填 | 备注
 ----|------|-------|-------|---------|----
