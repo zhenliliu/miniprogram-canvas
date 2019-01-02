@@ -259,17 +259,23 @@ class ShareImageBuilder {
    */
   generateImage() {
     return new Promise((resolve, reject) => {
-      this.ctx.draw(true, () => {
+      //此处加setTimeout是为了解决安卓手机在画完以后不执行回调的问题，导致图片导出超时失败（安卓手机性能可能有问题）
+      this.ctx.draw(true, setTimeout(() => {
         wx.canvasToTempFilePath({
           canvasId: this.canvas,
-          y       : 1,
+          y: 1,
           fileType: this.fileType || 'png',
           success: (res) => {
-            this.preview && wx.previewImage({urls: [res.tempFilePath]})
+            this.preview && wx.previewImage({
+              urls: [res.tempFilePath]
+            })
             resolve(res.tempFilePath)
           },
+          fail: (error) => {
+            reject(error)
+          }
         })
-      })
+      }, 3 * 1000))
     })
   }
   draw() {
