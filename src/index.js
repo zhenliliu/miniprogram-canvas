@@ -340,7 +340,7 @@ export default class ShareImageBuilder {
    * 图片进行高斯模糊
    * @param {} imgData 
    */
-  gaussBlur(imgData) {
+  gaussBlur(imgData, limitArr) {
     var pixes = imgData.data;
     var width = imgData.width;
     var height = imgData.height;
@@ -366,52 +366,117 @@ export default class ShareImageBuilder {
     for (i = 0, len = gaussMatrix.length; i < len; i++) {
         gaussMatrix[i] /= gaussSum;
     }
-    //x 方向一维高斯运算
-    for (y = 0; y < height; y++) {
-        for (x = 0; x < width; x++) {
-            r = g = b = a = 0;
-            gaussSum = 0;
-            for(j = -radius; j <= radius; j++){
-                k = x + j;
-                if(k >= 0 && k < width){//确保 k 没超出 x 的范围
-                    //r,g,b,a 四个一组
-                    i = (y * width + k) * 4;
-                    r += pixes[i] * gaussMatrix[j + radius];
-                    g += pixes[i + 1] * gaussMatrix[j + radius];
-                    b += pixes[i + 2] * gaussMatrix[j + radius];
-                    // a += pixes[i + 3] * gaussMatrix[j];
-                    gaussSum += gaussMatrix[j + radius];
+    if(limitArr){
+        for(let l=0;l<limitArr.length;l++){
+            let curLimitObj = limitArr[l];
+            let limitConvert = function(val,max){
+                if(val>=0){
+                    return val;
+                }else{
+                    return max+val;
+                }
+            };
+            let minX = curLimitObj.x && curLimitObj.x.min? limitConvert(curLimitObj.x.min, width): 0;
+            let maxX = curLimitObj.x && curLimitObj.x.max? limitConvert(curLimitObj.x.max, width): width;
+            let minY = curLimitObj.y && curLimitObj.y.min? limitConvert(curLimitObj.y.min, height): 0;
+            let maxY = curLimitObj.y && curLimitObj.y.max? limitConvert(curLimitObj.y.max, height): height;
+            //x 方向一维高斯运算
+            for(y = minY; y < maxY; y++){
+                for(x = minX; x<maxX; x++){
+                    r = g = b = a = 0;
+                    gaussSum = 0;
+                    for(j = -radius; j <= radius; j++){
+                        k = x + j;
+                        if(k >= 0 && k < width){//确保 k 没超出 x 的范围
+                            //r,g,b,a 四个一组
+                            i = (y * width + k) * 4;
+                            r += pixes[i] * gaussMatrix[j + radius];
+                            g += pixes[i + 1] * gaussMatrix[j + radius];
+                            b += pixes[i + 2] * gaussMatrix[j + radius];
+                            // a += pixes[i + 3] * gaussMatrix[j];
+                            gaussSum += gaussMatrix[j + radius];
+                        }
+                    }
+                    i = (y * width + x) * 4;
+                    // 除以 gaussSum 是为了消除处于边缘的像素, 高斯运算不足的问题
+                    // console.log(gaussSum)
+                    pixes[i] = r / gaussSum;
+                    pixes[i + 1] = g / gaussSum;
+                    pixes[i + 2] = b / gaussSum;
+                    // pixes[i + 3] = a ;
                 }
             }
-            i = (y * width + x) * 4;
-            // 除以 gaussSum 是为了消除处于边缘的像素, 高斯运算不足的问题
-            // console.log(gaussSum)
-            pixes[i] = r / gaussSum;
-            pixes[i + 1] = g / gaussSum;
-            pixes[i + 2] = b / gaussSum;
-            // pixes[i + 3] = a ;
+            //y 方向一维高斯运算
+            for (x = minX; x < maxX; x++) {
+                for (y = minY; y < maxY; y++) {
+                    r = g = b = a = 0;
+                    gaussSum = 0;
+                    for(j = -radius; j <= radius; j++){
+                        k = y + j;
+                        if(k >= 0 && k < height){//确保 k 没超出 y 的范围
+                            i = (k * width + x) * 4;
+                            r += pixes[i] * gaussMatrix[j + radius];
+                            g += pixes[i + 1] * gaussMatrix[j + radius];
+                            b += pixes[i + 2] * gaussMatrix[j + radius];
+                            // a += pixes[i + 3] * gaussMatrix[j];
+                            gaussSum += gaussMatrix[j + radius];
+                        }
+                    }
+                    i = (y * width + x) * 4;
+                    pixes[i] = r / gaussSum;
+                    pixes[i + 1] = g / gaussSum;
+                    pixes[i + 2] = b / gaussSum;
+                }
+            }
         }
-    }
-    //y 方向一维高斯运算
-    for (x = 0; x < width; x++) {
+    }else{
+        //x 方向一维高斯运算
         for (y = 0; y < height; y++) {
-            r = g = b = a = 0;
-            gaussSum = 0;
-            for(j = -radius; j <= radius; j++){
-                k = y + j;
-                if(k >= 0 && k < height){//确保 k 没超出 y 的范围
-                    i = (k * width + x) * 4;
-                    r += pixes[i] * gaussMatrix[j + radius];
-                    g += pixes[i + 1] * gaussMatrix[j + radius];
-                    b += pixes[i + 2] * gaussMatrix[j + radius];
-                    // a += pixes[i + 3] * gaussMatrix[j];
-                    gaussSum += gaussMatrix[j + radius];
+            for (x = 0; x < width; x++) {
+                r = g = b = a = 0;
+                gaussSum = 0;
+                for(j = -radius; j <= radius; j++){
+                    k = x + j;
+                    if(k >= 0 && k < width){//确保 k 没超出 x 的范围
+                        //r,g,b,a 四个一组
+                        i = (y * width + k) * 4;
+                        r += pixes[i] * gaussMatrix[j + radius];
+                        g += pixes[i + 1] * gaussMatrix[j + radius];
+                        b += pixes[i + 2] * gaussMatrix[j + radius];
+                        // a += pixes[i + 3] * gaussMatrix[j];
+                        gaussSum += gaussMatrix[j + radius];
+                    }
                 }
+                i = (y * width + x) * 4;
+                // 除以 gaussSum 是为了消除处于边缘的像素, 高斯运算不足的问题
+                // console.log(gaussSum)
+                pixes[i] = r / gaussSum;
+                pixes[i + 1] = g / gaussSum;
+                pixes[i + 2] = b / gaussSum;
+                // pixes[i + 3] = a ;
             }
-            i = (y * width + x) * 4;
-            pixes[i] = r / gaussSum;
-            pixes[i + 1] = g / gaussSum;
-            pixes[i + 2] = b / gaussSum;
+        }
+        //y 方向一维高斯运算
+        for (x = 0; x < width; x++) {
+            for (y = 0; y < height; y++) {
+                r = g = b = a = 0;
+                gaussSum = 0;
+                for(j = -radius; j <= radius; j++){
+                    k = y + j;
+                    if(k >= 0 && k < height){//确保 k 没超出 y 的范围
+                        i = (k * width + x) * 4;
+                        r += pixes[i] * gaussMatrix[j + radius];
+                        g += pixes[i + 1] * gaussMatrix[j + radius];
+                        b += pixes[i + 2] * gaussMatrix[j + radius];
+                        // a += pixes[i + 3] * gaussMatrix[j];
+                        gaussSum += gaussMatrix[j + radius];
+                    }
+                }
+                i = (y * width + x) * 4;
+                pixes[i] = r / gaussSum;
+                pixes[i + 1] = g / gaussSum;
+                pixes[i + 2] = b / gaussSum;
+            }
         }
     }
     return imgData;
