@@ -433,17 +433,17 @@ class ShareImageBuilder {
    * @param {} imgData 
    */
   gaussBlur(imgData, limitArr) {
-    var pixes = imgData.data;
-    var width = imgData.width;
-    var height = imgData.height;
-    var gaussMatrix = [],
+    let pixes = imgData.data;
+    let width = imgData.width;
+    let height = imgData.height;
+    let gaussMatrix = [],
         gaussSum = 0,
         x, y,
         r, g, b, a,
         i, j, k, len;
 
-    var radius = 10;
-    var sigma = 5;
+    let radius = 10;
+    let sigma = 5;
 
     a = 1 / (Math.sqrt(2 * Math.PI) * sigma);
     b = -1 / (2 * sigma * sigma);
