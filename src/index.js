@@ -214,7 +214,7 @@ export default class ShareImageBuilder {
             reject(error)
           }
         })
-      }, 3 * 1000))
+      }, 200))
     })
   }
   draw() {

@@ -98,6 +98,7 @@ module.exports =
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return ShareImageBuilder; });
 class ShareImageBuilder {
+
   constructor(page, options) {
     this.options             = options;
     this.page                = page;
@@ -312,7 +313,7 @@ class ShareImageBuilder {
             reject(error)
           }
         })
-      }, 3 * 1000))
+      }, 200))
     })
   }
   draw() {
@@ -621,7 +622,6 @@ class ShareImageBuilder {
     return imgData;
   }
 }
-
 /***/ })
 
 /******/ });
