@@ -98,7 +98,6 @@ module.exports =
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "default", function() { return ShareImageBuilder; });
 class ShareImageBuilder {
-
   constructor(page, options) {
     this.options             = options;
     this.page                = page;
@@ -115,10 +114,10 @@ class ShareImageBuilder {
     this.renderElementLength = 0
     this.drawComplate        = false;
     this.observeFun          = null;
-    this.drawComplateCount   = -1
+    this.drawComplateCount   = -1;
+    this.localImageArr       = [];
     this.setCanvasMeasure(this.canvasWidth, this.canvasHeight)
     this.initAllImageInfo()
-    this.getAllImgInfo()
   }
   /**
    * 设置画布的大小
@@ -169,38 +168,73 @@ class ShareImageBuilder {
   getTextWidth(text) {
     return this.ctx.measureText(text)
   }
- 
+  /**
+   * 创建获取图片信息的异步操作
+   */
   initAllImageInfo() {
     let { imgArr = [] } = this.options
     imgArr = this.sort(imgArr)
     for(let i = 0, j = imgArr.length; i < j ; i++) {
-      this.formatImgsInfoArr.push( this.formatImageInfo(imgArr[i]))
+      if(imgArr[i].url.match(/(http:\/\/|https:\/\/)/)){
+        this.formatImgsInfoArr.push(this.createImageDownloadPromise(imgArr[i]))
+      } else {
+        this.localImageArr.push(new Promise((resolve, reject) => {
+          this.setImageInfo(imgArr[i]).then( res => {
+            resolve(res)
+          }).catch(error => {
+            reject(error)
+          }) 
+        }))
+      }
     }
+    this.formatImgsInfoArr = [...this.formatImgsInfoArr, ...this.localImageArr]
+    this.getAllImgInfo()
+  }
+  /**
+   * 获取图片宽高
+   * @param {*} imgItemObj 
+   */
+  setImageInfo(imgItemObj) {
+    return new Promise((resolve, reject) => {
+      wx.getImageInfo({
+        src: imgItemObj.url,
+        success: (imageInfo) => {
+          resolve({
+            ...imgItemObj, 
+            ...imageInfo, 
+            path: imgItemObj.url,
+            height: imgItemObj.height || imageInfo.height,
+            width: imgItemObj.width || imageInfo.width
+          })
+        },
+        fail: (errorInfo) => {
+          reject(errorInfo)
+        }
+      })
+    })
   }
   /**
    * 格式化所有渲染图片的参数:URL;height; width
    * @param {Object} imgItemObj 
    */
-  formatImageInfo(imgItemObj) {
+  createImageDownloadPromise(imgItemObj) {
     return  new Promise((resolve, reject) => {
       this.downloadPromise(imgItemObj.url).then((res) => {
-        wx.getImageInfo({
-          src: res.tempFilePath,
-          success: (imageInfo) => {
-            resolve({
-              ...imgItemObj, 
-              ...imageInfo, 
-              height: imgItemObj.height || imageInfo.height,
-              width: imgItemObj.width || imageInfo.width
-            })
-          },
-          fail: (errorInfo) => {
-            reject(errorInfo)
-          }
+        let imgInfoObj = {
+          ...imgItemObj,
+          url: res.tempFilePath
+        }
+        this.setImageInfo(imgInfoObj).then(res => {
+          resolve(res)
+        }).catch( error => {
+          reject(error)
         })
       })
     })
   }
+  /**
+   * 执行所有下载图片的异步操作
+   */
   getAllImgInfo() {
     Promise.all(this.formatImgsInfoArr).then((arr) => {
       this.canDraw = true
@@ -210,6 +244,9 @@ class ShareImageBuilder {
       console.warn('网络开小差了')
     })
   }
+  /**
+   * 初始化canvas
+   */
   initCanvas() {
     let { useBgImage } = this.options
     let { path, height = 1334, width = 750 } = useBgImage ? this.formatImgsInfoArr.pop() : this.options
@@ -306,8 +343,12 @@ class ShareImageBuilder {
     return new Promise((resolve,reject) => {
       wx.downloadFile({
         url: filePath.replace(/^(http:\/\/)/g, 'https://'),
-        success: (res) => resolve(res),
-        fail   : (err) => reject('downloadFailed')
+        success: (res) => {
+          resolve(res);
+        },
+        fail: (err) => {
+          reject('downloadFailed')
+        }
       })
     });
   }
@@ -349,13 +390,13 @@ class ShareImageBuilder {
     this.ctx.setFillStyle(bgColor);
     this.ctx.beginPath()
     this.ctx.moveTo(x + (radius || tlr || 0), y);
-    (radius || trr) ?  this.ctx.lineTo(x + width - (radius || trr) , y): this.ctx.lineTo(x + width , y);
+    (radius || trr) ? this.ctx.lineTo(x + width - (radius || trr) , y): this.ctx.lineTo(x + width , y);
     (radius || trr) && this.ctx.arc(x + width - (radius || trr), y + (radius || trr), (radius || trr), 1.5 * Math.PI, 2 * Math.PI, false);
-    (radius || brr) ?  this.ctx.lineTo(x + width , y + height - (radius || brr)) : this.ctx.lineTo(x + width, y + height);
+    (radius || brr) ? this.ctx.lineTo(x + width , y + height - (radius || brr)) : this.ctx.lineTo(x + width, y + height);
     (radius || brr) && this.ctx.arc(x + width - (radius || brr), y + height - (radius || brr), (radius || brr), 0, 0.5 * Math.PI, false);
-    (radius || blr) ?  this.ctx.lineTo(x + (radius || blr), y + height) : this.ctx.lineTo(x, y + height);
+    (radius || blr) ? this.ctx.lineTo(x + (radius || blr), y + height) : this.ctx.lineTo(x, y + height);
     (radius || blr) && this.ctx.arc(x + (radius || blr), y + height - (radius || blr), (radius || blr), 0.5 * Math.PI, Math.PI, false);
-    (radius || tlr) ?  this.ctx.lineTo(x, y + (radius || tlr)) : this.ctx.lineTo(x, y);
+    (radius || tlr) ? this.ctx.lineTo(x, y + (radius || tlr)) : this.ctx.lineTo(x, y);
     (radius || tlr) && this.ctx.arc(x + (radius || tlr), y + (radius || tlr), (radius || tlr), Math.PI, 1.5 * Math.PI, false);
     this.ctx.fill();
     this.ctx.setLineWidth(0);
@@ -374,12 +415,12 @@ class ShareImageBuilder {
   drawText(item) {
     let {
       text, 
+      fontSize = 20, 
+      x = 0, 
+      y = 0, 
+      color = '#000', 
+      textAlign = 'center' ,
       padding,
-      x          = 0, 
-      y          = 0, 
-      fontSize   = 20, 
-      color      = '#000', 
-      textAlign  = 'center' ,
       lineHeight = 10
      } = item
     this.ctx.setTextAlign(textAlign)
@@ -387,7 +428,7 @@ class ShareImageBuilder {
     this.ctx.setFillStyle(color)
     this.ctx.setTextBaseline('top')
     if(/(.*\$\{(.*)\}\$)/.test(text)) {
-      let space       = /(.*\$\{(.*)\}\$)/.exec(text)[2]
+      let space = /(.*\$\{(.*)\}\$)/.exec(text)[2]
       let spaceString = " "
       for(let i = 0; i < space; i ++) {
         spaceString += " "
@@ -419,15 +460,15 @@ class ShareImageBuilder {
         for(let j = i-1; j>=0; j--){
           if(flag) {
             if( Number(arraytoSort[j+1].zIndex) < Number(arraytoSort[j].zIndex) ){
-              temp             = arraytoSort[j+1];
+              temp = arraytoSort[j+1];
               arraytoSort[j+1] = arraytoSort[j];
-              arraytoSort[j]   = temp;
+              arraytoSort[j] = temp;
             }   
           }else{
             if( Number(arraytoSort[j+1].zIndex) > Number(arraytoSort[j].zIndex) ){
-              temp             = arraytoSort[j+1];
+              temp = arraytoSort[j+1];
               arraytoSort[j+1] = arraytoSort[j];
-              arraytoSort[j]   = temp;
+              arraytoSort[j] = temp;
             }   
           }
         }   
@@ -439,17 +480,17 @@ class ShareImageBuilder {
    * @param {} imgData 
    */
   gaussBlur(imgData, limitArr) {
-    let pixes = imgData.data;
-    let width = imgData.width;
-    let height = imgData.height;
-    let gaussMatrix = [],
+    var pixes = imgData.data;
+    var width = imgData.width;
+    var height = imgData.height;
+    var gaussMatrix = [],
         gaussSum = 0,
         x, y,
         r, g, b, a,
         i, j, k, len;
 
-    let radius = 10;
-    let sigma = 5;
+    var radius = 10;
+    var sigma = 5;
 
     a = 1 / (Math.sqrt(2 * Math.PI) * sigma);
     b = -1 / (2 * sigma * sigma);
