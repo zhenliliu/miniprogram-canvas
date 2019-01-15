@@ -220,6 +220,8 @@ export default class ShareImageBuilder {
   draw() {
     return new Promise((resolve, reject) => {
       let intervalID = setInterval(() => {
+        console.log('this.drawComplateCount',this.drawComplateCount)
+        console.log(' === this.renderElementLength', this.renderElementLength)
         if(this.drawComplateCount === this.renderElementLength){
           this.generateImage().then((res) => {
             resolve(res)
@@ -323,7 +325,8 @@ export default class ShareImageBuilder {
       color = '#000', 
       textAlign = 'center' ,
       padding,
-      lineHeight = 10
+      paddingLeft,
+      paddingRight
      } = item
     this.ctx.setTextAlign(textAlign)
     this.ctx.setFontSize(fontSize)
@@ -338,18 +341,31 @@ export default class ShareImageBuilder {
       text = text.replace(/\$\{(.*)\}\$/, spaceString)
     }
     if( padding ) {
-      let canvasWidth    = this.canvasWidth
-      let widthOfRow     = canvasWidth - padding * 2
-      let charCountOfRow = Math.floor(widthOfRow/fontSize)
-      let charGroup      = Math.ceil(text.length / charCountOfRow)
-      for(let i = 0; i < charGroup; i ++) {
-        this.ctx.fillText(text.substring(i * charCountOfRow, (i + 1) * charCountOfRow), padding,  i > 0 ? y + i * (fontSize + lineHeight) : y)
-      }
+      this.drawTextWidthPadding(this.canvasWidth - padding * 2, item, padding)
+    } else if(paddingLeft && !paddingRight) {
+      this.drawTextWidthPadding(this.canvasWidth - paddingLeft, item, paddingLeft)
+    } else if(!paddingLeft && paddingRight) {
+      this.drawTextWidthPadding(this.canvasWidth - paddingRight,item, 0)
+    } else if(paddingLeft && paddingRight) {
+      this.drawTextWidthPadding(this.canvasWidth - paddingRight - paddingLeft, item, paddingLeft)
     } else {
       this.ctx.fillText(text, x, y)
     }
     this.ctx.draw(true)
     this.drawComplateCount += 1
+  }
+  drawTextWidthPadding(widthOfRow,item, x) {
+    let {
+      text, 
+      fontSize = 20, 
+      lineHeight = 10,
+      y = 0, 
+     } = item
+    let charCountOfRow = Math.floor(widthOfRow/fontSize)
+    let charGroup      = Math.ceil(text.length / charCountOfRow)
+    for(let i = 0; i < charGroup; i ++) {
+      this.ctx.fillText(text.substring(i * charCountOfRow, (i + 1) * charCountOfRow), x,  i > 0 ? y + i * (fontSize + lineHeight) : y)
+    }
   }
   /**
    * 排序
