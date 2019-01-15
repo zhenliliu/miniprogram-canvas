@@ -114,3 +114,6 @@ color|#000|String|否|字体的颜色
 fontSize|20|Number|否|字体大小
 textAlign|'center'|String|否|字体对其方式
 lineHeight| 10 |String|否|行间距
+padding| 0 |String|否|文字距离画布两边的内边距
+paddingLeft| 0 |String|否|文字距离画布左边的内边距，设置padding后此值无效
+padding| 0 |String|否|文字距离画布两边的内边距，设置padding后此值无效
