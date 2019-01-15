@@ -345,7 +345,7 @@ export default class ShareImageBuilder {
     } else if(paddingLeft && !paddingRight) {
       this.drawTextWidthPadding(this.canvasWidth - paddingLeft, item, paddingLeft)
     } else if(!paddingLeft && paddingRight) {
-      this.drawTextWidthPadding(this.canvasWidth - paddingRight,item, 0)
+      this.drawTextWidthPadding(this.canvasWidth - paddingRight,item, x)
     } else if(paddingLeft && paddingRight) {
       this.drawTextWidthPadding(this.canvasWidth - paddingRight - paddingLeft, item, paddingLeft)
     } else {
