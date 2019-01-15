@@ -44,8 +44,8 @@ export default class ShareImageBuilder {
   setExtraData(options) {
     let executeFun = () => {
         if(Array.isArray(options)) {
-          this.renderElementLength += options.length
           for(let i = 0, len = options.length; i < len; i++) {
+            this.renderElementLength += 1
             if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
               this.drawController(options[i])
             } else if(options[i].drawType === 'image') {
