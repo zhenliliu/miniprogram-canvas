@@ -341,22 +341,21 @@ export default class ShareImageBuilder {
       text = text.replace(/\$\{(.*)\}\$/, spaceString)
     }
     if( padding ) {
-      this.drawTextWidthPadding(this.canvasWidth - padding * 2, item, padding)
+      this.drawTextWidthPadding(this.canvasWidth - padding * 2, item, text, padding)
     } else if(paddingLeft && !paddingRight) {
-      this.drawTextWidthPadding(this.canvasWidth - paddingLeft, item, paddingLeft)
+      this.drawTextWidthPadding(this.canvasWidth - paddingLeft, item, text, paddingLeft)
     } else if(!paddingLeft && paddingRight) {
-      this.drawTextWidthPadding(this.canvasWidth - paddingRight,item, x)
+      this.drawTextWidthPadding(this.canvasWidth - paddingRight,item, text, x)
     } else if(paddingLeft && paddingRight) {
-      this.drawTextWidthPadding(this.canvasWidth - paddingRight - paddingLeft, item, paddingLeft)
+      this.drawTextWidthPadding(this.canvasWidth - paddingRight - paddingLeft, item, text, paddingLeft)
     } else {
       this.ctx.fillText(text, x, y)
     }
     this.ctx.draw(true)
     this.drawComplateCount += 1
   }
-  drawTextWidthPadding(widthOfRow,item, x) {
+  drawTextWidthPadding(widthOfRow,item, text, x) {
     let {
-      text, 
       fontSize = 20, 
       lineHeight = 10,
       y = 0, 
