@@ -1,3 +1,8 @@
+/**
+ * 小程序画图脚本
+ * @author liuzhenli
+ * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
+ */
 export default class ShareImageBuilder {
 
   constructor(page, options) {
@@ -26,11 +31,11 @@ export default class ShareImageBuilder {
    * @param {Number} canvasWidth 
    * @param {Number} canvasHeight 
    */
-  setCanvasMeasure(canvasWidth, canvasHeight) {
+  setCanvasMeasure(canvasWidth, canvasHeight, callback) {
     this.page.setData({
       canvasHeight,
       canvasWidth
-    })
+    },callback)
   }
   /**
    * 需要额外渲染的元素
@@ -39,8 +44,8 @@ export default class ShareImageBuilder {
   setExtraData(options) {
     let executeFun = () => {
         if(Array.isArray(options)) {
+          this.renderElementLength += options.length
           for(let i = 0, len = options.length; i < len; i++) {
-            this.renderElementLength += 1
             if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
               this.drawController(options[i])
             } else if(options[i].drawType === 'image') {
@@ -78,22 +83,22 @@ export default class ShareImageBuilder {
     imgArr = this.sort(imgArr)
     for(let i = 0, j = imgArr.length; i < j ; i++) {
       if(imgArr[i].url.match(/(http:\/\/|https:\/\/)/)){
-        this.formatImgsInfoArr.push(this.createImageDownloadPromise(imgArr[i]))
+        this.formatImgsInfoArr[i] = this.createImageDownloadPromise(imgArr[i])
       } else {
-        this.localImageArr.push(new Promise((resolve, reject) => {
-          this.setImageInfo(imgArr[i]).then( res => {
+        this.formatImgsInfoArr[i] = new Promise((resolve, reject) => {
+          this.setImageInfo(imgArr[i], i).then( res => {
             resolve(res)
           }).catch(error => {
             reject(error)
           }) 
-        }))
+        })
       }
     }
-    this.formatImgsInfoArr = [...this.formatImgsInfoArr, ...this.localImageArr]
     this.getAllImgInfo()
   }
   /**
    * 获取图片宽高
+   * 设置图片信息
    * @param {*} imgItemObj 
    */
   setImageInfo(imgItemObj) {
@@ -124,7 +129,8 @@ export default class ShareImageBuilder {
       this.downloadPromise(imgItemObj.url).then((res) => {
         let imgInfoObj = {
           ...imgItemObj,
-          url: res.tempFilePath
+          url: res.tempFilePath,
+          originUrl: imgItemObj.url
         }
         this.setImageInfo(imgInfoObj).then(res => {
           resolve(res)
@@ -154,18 +160,15 @@ export default class ShareImageBuilder {
     let { path, height = 1334, width = 750 } = useBgImage ? this.formatImgsInfoArr.pop() : this.options
     this.canvasHeight  = height
     this.canvasWidth   = width
-    this.page.setData({
-      canvasHeight: height,
-      canvasWidth: width
-    }, () => {
-      useBgImage ? this.drawImage(path,0,0,width, height) : this.drawRect(0,0, width, height);
+    this.setCanvasMeasure(width, height, () => {
+      useBgImage ? this.drawImage(path,0,0,width, height, useBgImage) : this.drawRect(0,0, width, height);
       this.drawMainContent();
     })
   }
   drawMainContent() {
-    let { textArr= [], rectArr = []} = this.options
+    let { textArr= [], rectArr = [] } = this.options
     this.preDrawContentArr = this.sort(this.formatImgsInfoArr.concat(textArr).concat(rectArr), true)
-    this.renderElementLength = this.preDrawContentArr.length
+    this.renderElementLength = this.preDrawContentArr.length 
     for(let i = 0, len = this.preDrawContentArr.length; i < len; i++) {
       if(!this.preDrawContentArr[i].$D) {
         this.drawController(this.preDrawContentArr[i])
@@ -220,8 +223,6 @@ export default class ShareImageBuilder {
   draw() {
     return new Promise((resolve, reject) => {
       let intervalID = setInterval(() => {
-        console.log('this.drawComplateCount',this.drawComplateCount)
-        console.log(' === this.renderElementLength', this.renderElementLength)
         if(this.drawComplateCount === this.renderElementLength){
           this.generateImage().then((res) => {
             resolve(res)
@@ -266,6 +267,14 @@ export default class ShareImageBuilder {
     this.ctx.draw(true);
     this.drawComplateCount += 1
   }
+  /**
+   * 
+   * @param {String} path  图片地址
+   * @param {Number} cx    起始x坐标
+   * @param {Number} cy    起始y坐标
+   * @param {Number} cr    圆角半径
+   * @param {Number} color 边框颜色
+   */
   drawArcImage(path, cx, cy, cr, color = '#000') {
     this.ctx.save();
     this.ctx.beginPath();
@@ -281,12 +290,12 @@ export default class ShareImageBuilder {
   }
   /**
    * 
-   * @param {Number} x 
-   * @param {Number} y 
-   * @param {Number} width 
-   * @param {Number} height 
-   * @param {String} color 
-   * @param {String} bgColor 
+   * @param {Number} x       起始x坐标
+   * @param {Number} y       起始y坐标
+   * @param {Number} width   矩形宽
+   * @param {Number} height  矩形高
+   * @param {String} color   边框颜色
+   * @param {String} bgColor 背景颜色
    * @param  {...any} args 
    */
   drawRect(x, y, width, height, color = '#fff', bgColor = "#fff", ...args ) {
