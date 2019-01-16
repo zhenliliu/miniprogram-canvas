@@ -102,6 +102,11 @@ __webpack_require__.r(__webpack_exports__);
  * @author liuzhenli
  * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
  */
+/**
+ * 小程序画图脚本
+ * @author liuzhenli
+ * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
+ */
 class ShareImageBuilder {
 
   constructor(page, options) {
@@ -143,8 +148,8 @@ class ShareImageBuilder {
   setExtraData(options) {
     let executeFun = () => {
         if(Array.isArray(options)) {
+          this.renderElementLength += options.length
           for(let i = 0, len = options.length; i < len; i++) {
-            this.renderElementLength += 1
             if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
               this.drawController(options[i])
             } else if(options[i].drawType === 'image') {
@@ -449,9 +454,9 @@ class ShareImageBuilder {
       text = text.replace(/\$\{(.*)\}\$/, spaceString)
     }
     if( padding ) {
-      this.drawTextWidthPadding(this.canvasWidth - padding * 2, item, text, padding)
+        this.drawTextWidthPadding(this.canvasWidth - padding * 2, item, text, textAlign == 'center' ? this.canvasWidth / 2 : textAlign == 'right' ? this.canvasWidth - padding : padding)
     } else if(paddingLeft && !paddingRight) {
-      this.drawTextWidthPadding(this.canvasWidth - paddingLeft, item, text, paddingLeft)
+        this.drawTextWidthPadding(this.canvasWidth - paddingLeft, item, text, paddingLeft)
     } else if(!paddingLeft && paddingRight) {
       this.drawTextWidthPadding(this.canvasWidth - paddingRight,item, text, x)
     } else if(paddingLeft && paddingRight) {
@@ -646,6 +651,7 @@ class ShareImageBuilder {
     return imgData;
   }
 }
+
 
 /***/ })
 
