@@ -23,6 +23,10 @@ export default class ShareImageBuilder {
     this.observeFun          = null;
     this.drawComplateCount   = -1;
     this.localImageArr       = [];
+    this.extraQueue          = [];
+    this.extraFunExcuting    = false;
+    this.haveExtraData       = false;
+    this.haveExcutedObserveFun = false
     this.setCanvasMeasure(this.canvasWidth, this.canvasHeight)
     this.initAllImageInfo()
   }
@@ -37,35 +41,41 @@ export default class ShareImageBuilder {
       canvasWidth
     },callback)
   }
+  excuteExtraFun() {
+    let options = this.extraQueue.shift()
+    if(!options || this.extraFunExcuting) return;
+    this.extraFunExcuting = true
+    this.renderElementLength += options.length
+    for(let i = 0, len = options.length; i < len; i++) {
+      if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
+        this.drawController(options[i])
+      } else if(options[i].drawType === 'image') {
+        this.downloadPromise(options[i].url).then((res) => {
+          options[i].path = res.tempFilePath
+          this.drawController(options[i])
+        })
+      }
+    }
+  }
   /**
    * 需要额外渲染的元素
    * @param { Object| Array} options 
    */
   setExtraData(options) {
-    let executeFun = () => {
-        if(Array.isArray(options)) {
-          this.renderElementLength += options.length
-          for(let i = 0, len = options.length; i < len; i++) {
-            if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
-              this.drawController(options[i])
-            } else if(options[i].drawType === 'image') {
-              this.downloadPromise(options[i].url).then((res) => {
-                options[i].path = res.tempFilePath
-                this.drawController(options[i])
-              })
-            }
-          }
-        } else if(typeof options === 'object') {
-          this.drawController(options)
-        } else {
-          this.extraData = false
-          console.error('数据格式不正确！')
+    if(Array.isArray(options)) {
+      if(!options.length) return ;
+      this.extraQueue.push(options)
+      this.haveExtraData = true;
+      let intervalID = setInterval(() => {
+        if(this.drawComplate) {
+          clearInterval(intervalID)
+          intervalID = null
+          this.excuteExtraFun()
         }
-    }
-    if( this.drawComplate) {
-      executeFun()
-    }else{
-      this.observeFun = executeFun
+      }, 100);
+    } else {
+      this.extraData = false
+      console.error('options需要为Array类型，数据格式不正确！')
     }
   }
   /**
@@ -175,12 +185,11 @@ export default class ShareImageBuilder {
         this.preDrawContentArr[i]['$D'] = true
       }
       if(i === len - 1) {
-        let intervalID = setInterval(() => {
+        this.drawObserveIntervalID = setInterval(() => {
           if(this.drawComplateCount === len) {
-            this.observeFun && this.observeFun()
             this.drawComplate = true
-            clearInterval(intervalID)
-            intervalID = null
+            clearInterval(this.drawObserveIntervalID)
+            this.drawObserveIntervalID = null
           }
         },10)
       }
@@ -191,10 +200,10 @@ export default class ShareImageBuilder {
    * @param {Object} content 
    */
   drawController(content) {
-    let { drawType ,url, path, x, y, width, height, text, color,  avatar, radius, bgColor, tlr = 0, trr = 0, blr = 0, brr = 0} = content;
+    let { drawType ,url, path, x, y, width, height, text, color,  avatar, radius, bgColor, tlr = 0, trr = 0, blr = 0, brr = 0, lineWidth} = content;
     (drawType ==='image' && url && path) && (avatar ? this.drawArcImage(path, x, y, radius, color) : this.drawImage(path, x, y, width, height));
     (drawType ==='text' && text && color) && this.drawText(content);
-    (drawType === 'rect' && width && height) && this.drawRect(x, y, width, height, color, bgColor, radius, tlr, trr, blr, brr);
+    (drawType === 'rect' && width && height) && this.drawRect(x, y, width, height, color, bgColor, radius, tlr, trr, blr, brr,lineWidth);
   }
   /**
    * 生成图片
@@ -222,20 +231,20 @@ export default class ShareImageBuilder {
   }
   draw() {
     return new Promise((resolve, reject) => {
-      let intervalID = setInterval(() => {
+      this.drawIntervalID = setInterval(() => {
         if(this.drawComplateCount === this.renderElementLength){
           this.generateImage().then((res) => {
             resolve(res)
           })
-          clearInterval(intervalID)
-          intervalID = null
+          clearInterval( this.drawIntervalID)
+          this.drawIntervalID = null
         }
       },10)
       setTimeout(() => {
         reject('timeout')
-        intervalID && console.warn('网络超时，请重试')
-        intervalID && clearInterval(intervalID)
-        intervalID = null
+        this.drawIntervalID && console.warn('网络超时，请重试')
+        this.drawIntervalID && clearInterval( this.drawIntervalID)
+        this.drawIntervalID = null
       },this.options.timeout || 5 * 1000)
     })
     
@@ -257,6 +266,12 @@ export default class ShareImageBuilder {
       })
     });
   }
+  setDrawStatus() {
+    if((this.drawComplateCount == this.renderElementLength) && this.extraFunExcuting) {
+      this.extraFunExcuting = false
+      this.excuteExtraFun()
+    }
+  }
   /**
    * 渲染图片
    * @param {String} imageUrl 
@@ -266,6 +281,7 @@ export default class ShareImageBuilder {
     this.ctx.drawImage(imageUrl, ...args);
     this.ctx.draw(true);
     this.drawComplateCount += 1
+    this.haveExtraData && this.setDrawStatus()
   }
   /**
    * 
@@ -287,6 +303,7 @@ export default class ShareImageBuilder {
     this.ctx.draw(true);
     this.ctx.restore();
     this.drawComplateCount += 1
+    this.haveExtraData && this.setDrawStatus()
   }
   /**
    * 
@@ -299,7 +316,7 @@ export default class ShareImageBuilder {
    * @param  {...any} args 
    */
   drawRect(x, y, width, height, color = '#fff', bgColor = "#fff", ...args ) {
-    let [radius, tlr, trr, blr, brr] = args
+    let [radius, tlr, trr, blr, brr, lineWidth = 0] = args
     this.ctx.setFillStyle(bgColor);
     this.ctx.beginPath()
     this.ctx.moveTo(x + (radius || tlr || 0), y);
@@ -312,11 +329,12 @@ export default class ShareImageBuilder {
     (radius || tlr) ? this.ctx.lineTo(x, y + (radius || tlr)) : this.ctx.lineTo(x, y);
     (radius || tlr) && this.ctx.arc(x + (radius || tlr), y + (radius || tlr), (radius || tlr), Math.PI, 1.5 * Math.PI, false);
     this.ctx.fill();
-    this.ctx.setLineWidth(0);
+    this.ctx.setLineWidth(lineWidth);
     this.ctx.setStrokeStyle(color);
     this.ctx.stroke();
     this.ctx.draw(true);
     this.drawComplateCount += 1
+    this.haveExtraData && this.setDrawStatus()
   }
   drawCircle() {
 
@@ -362,6 +380,7 @@ export default class ShareImageBuilder {
     }
     this.ctx.draw(true)
     this.drawComplateCount += 1
+    this.haveExtraData && this.setDrawStatus()
   }
   drawTextWidthPadding(widthOfRow,item, text, x) {
     let {
