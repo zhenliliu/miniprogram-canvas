@@ -107,6 +107,11 @@ __webpack_require__.r(__webpack_exports__);
  * @author liuzhenli
  * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
  */
+/**
+ * 小程序画图脚本
+ * @author liuzhenli
+ * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
+ */
 class ShareImageBuilder {
 
   constructor(page, options) {
@@ -149,8 +154,8 @@ class ShareImageBuilder {
     let options = this.extraQueue.shift()
     if(!options || this.extraFunExcuting) return;
     this.extraFunExcuting = true
-    this.renderElementLength += options.length
     for(let i = 0, len = options.length; i < len; i++) {
+      this.renderElementLength += 1
       if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
         this.drawController(options[i])
       } else if(options[i].drawType === 'image') {
@@ -670,6 +675,7 @@ class ShareImageBuilder {
     return imgData;
   }
 }
+
 
 
 /***/ })
