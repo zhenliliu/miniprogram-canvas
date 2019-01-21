@@ -102,16 +102,6 @@ __webpack_require__.r(__webpack_exports__);
  * @author liuzhenli
  * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
  */
-/**
- * 小程序画图脚本
- * @author liuzhenli
- * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
- */
-/**
- * 小程序画图脚本
- * @author liuzhenli
- * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
- */
 class ShareImageBuilder {
 
   constructor(page, options) {
@@ -151,19 +141,29 @@ class ShareImageBuilder {
     },callback)
   }
   excuteExtraFun() {
-    let options = this.extraQueue.shift()
-    if(!options || this.extraFunExcuting) return;
-    this.extraFunExcuting = true
-    for(let i = 0, len = options.length; i < len; i++) {
-      this.renderElementLength += 1
-      if(options[i].drawType === 'text' || options[i].drawType === 'rect'){
-        this.drawController(options[i])
-      } else if(options[i].drawType === 'image') {
-        this.downloadPromise(options[i].url).then((res) => {
-          options[i].path = res.tempFilePath
-          this.drawController(options[i])
+    if(!this.extraFunExcuting) {
+      let options = this.extraQueue.shift()
+      console.log('extraFunExcuting options', options)
+      if(!options) return;
+      this.extraFunExcuting = true
+      if( options.drawType === 'text' || options.drawType === 'rect' || options.drawType === 'line' || options.drawType === 'circle'){
+        this.drawController(options)
+      } else if(options.drawType === 'image') {
+        this.downloadPromise(options.url).then((res) => {
+          options.path = res.tempFilePath
+          this.drawController(options)
         })
       }
+    } else if(this.extraQueue.length) {
+      let IntervalID = setInterval(() => {
+        if(!this.extraFunExcuting) {
+          clearInterval(IntervalID)
+          IntervalID = null
+          this.excuteExtraFun()
+        }
+      },10)
+    } else {
+      return
     }
   }
   /**
@@ -173,7 +173,8 @@ class ShareImageBuilder {
   setExtraData(options) {
     if(Array.isArray(options)) {
       if(!options.length) return ;
-      this.extraQueue.push(options)
+      this.extraQueue.push(...options)
+      this.renderElementLength += options.length
       this.haveExtraData = true;
       let intervalID = setInterval(() => {
         if(this.drawComplate) {
@@ -181,7 +182,7 @@ class ShareImageBuilder {
           intervalID = null
           this.excuteExtraFun()
         }
-      }, 100);
+      },10);
     } else {
       this.extraData = false
       console.error('options需要为Array类型，数据格式不正确！')
@@ -280,13 +281,27 @@ class ShareImageBuilder {
     this.canvasHeight  = height
     this.canvasWidth   = width
     this.setCanvasMeasure(width, height, () => {
-      useBgImage ? this.drawImage(path,0,0,width, height, useBgImage) : this.drawRect(0,0, width, height);
+      useBgImage ? this.drawImage({path,x:0,y:0,width, height}) : this.drawRect({x:0,y:0,width,height});
       this.drawMainContent();
     })
   }
   drawMainContent() {
-    let { textArr= [], rectArr = [] } = this.options
-    this.preDrawContentArr = this.sort(this.formatImgsInfoArr.concat(textArr).concat(rectArr), true)
+    let { 
+      lineArr = [],
+      textArr = [], 
+      rectArr = [], 
+      circleArr = [] } = this.options
+    this.preDrawContentArr = this.sort([
+      ...this.formatImgsInfoArr,
+      ...textArr, 
+      ...rectArr, 
+      ...circleArr, 
+      ...lineArr,
+    ], true)
+    if(!this.preDrawContentArr.length) {
+      this.drawComplate = true
+      return;
+    }
     this.renderElementLength = this.preDrawContentArr.length 
     for(let i = 0, len = this.preDrawContentArr.length; i < len; i++) {
       if(!this.preDrawContentArr[i].$D) {
@@ -309,10 +324,22 @@ class ShareImageBuilder {
    * @param {Object} content 
    */
   drawController(content) {
-    let { drawType ,url, path, x, y, width, height, text, color,  avatar, radius, bgColor, tlr = 0, trr = 0, blr = 0, brr = 0, lineWidth} = content;
-    (drawType ==='image' && url && path) && (avatar ? this.drawArcImage(path, x, y, radius, color) : this.drawImage(path, x, y, width, height));
-    (drawType ==='text' && text && color) && this.drawText(content);
-    (drawType === 'rect' && width && height) && this.drawRect(x, y, width, height, color, bgColor, radius, tlr, trr, blr, brr,lineWidth);
+    let { 
+      drawType ,
+      url, 
+      path, 
+      width, 
+      height, 
+      text, 
+      color,  
+      avatar, 
+      radius,
+    } = content;
+    (drawType ==='image' && url   && path)   && (avatar ? this.drawArcImage(content) : this.drawImage(content));
+    (drawType ==='text'  && text  && color)  && this.drawText(content);
+    (drawType ==='rect'  && width && height) && this.drawRect(content);
+    (drawType ==='circle' && radius) && this.drawCircle(content);
+    (drawType ==='line'   && width) && this.drawLine(content)
   }
   /**
    * 生成图片
@@ -338,12 +365,14 @@ class ShareImageBuilder {
       }, 200))
     })
   }
+
   draw() {
     return new Promise((resolve, reject) => {
       this.drawIntervalID = setInterval(() => {
-        if(this.drawComplateCount === this.renderElementLength){
+        if((this.drawComplateCount === this.renderElementLength) && !this.extraQueue.length){
           this.generateImage().then((res) => {
             resolve(res)
+            this.extraFunExcuting = false
           })
           clearInterval( this.drawIntervalID)
           this.drawIntervalID = null
@@ -375,8 +404,11 @@ class ShareImageBuilder {
       })
     });
   }
+  hasDrawComplete() {
+    return (this.drawComplateCount === this.renderElementLength)
+  }
   setDrawStatus() {
-    if((this.drawComplateCount == this.renderElementLength) && this.extraFunExcuting) {
+    if((this.drawComplateCount < this.renderElementLength)) {
       this.extraFunExcuting = false
       this.excuteExtraFun()
     }
@@ -386,10 +418,12 @@ class ShareImageBuilder {
    * @param {String} imageUrl 
    * @param  {...any} args 
    */
-  drawImage(imageUrl, ...args) {
-    this.ctx.drawImage(imageUrl, ...args);
+  drawImage(content) {
+    let { path, x, y, width, height, blur } = content
+    this.ctx.drawImage(path, x, y, width, height);
     this.ctx.draw(true);
     this.drawComplateCount += 1
+    this.extraFunExcuting = false
     this.haveExtraData && this.setDrawStatus()
   }
   /**
@@ -398,20 +432,22 @@ class ShareImageBuilder {
    * @param {Number} cx    起始x坐标
    * @param {Number} cy    起始y坐标
    * @param {Number} cr    圆角半径
-   * @param {Number} color 边框颜色
+   * @param {Number} borderColor 边框颜色
    */
-  drawArcImage(path, cx, cy, cr, color = '#000') {
+  drawArcImage(content) {
+    let { path, x, y, radius, borderColor = 'transparent', borderWidth = 0 } = content
     this.ctx.save();
     this.ctx.beginPath();
-    this.ctx.setLineWidth(2);
-    this.ctx.arc(cx, cy, cr, 0, 2 * Math.PI);
-    this.ctx.setStrokeStyle(color);
+    this.ctx.setLineWidth(borderWidth);
+    this.ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    this.ctx.setStrokeStyle(borderColor);
     this.ctx.stroke();
     this.ctx.clip();
-    this.ctx.drawImage(path, cx - cr, cy - cr, 2 * cr, 2 * cr);
+    this.ctx.drawImage(path, x - radius, y - radius, 2 * radius, 2 * radius);
     this.ctx.draw(true);
     this.ctx.restore();
     this.drawComplateCount += 1
+    this.extraFunExcuting = false
     this.haveExtraData && this.setDrawStatus()
   }
   /**
@@ -421,32 +457,67 @@ class ShareImageBuilder {
    * @param {Number} width   矩形宽
    * @param {Number} height  矩形高
    * @param {String} color   边框颜色
-   * @param {String} bgColor 背景颜色
+   * @param {String} backgroundColor 背景颜色
    * @param  {...any} args 
    */
-  drawRect(x, y, width, height, color = '#fff', bgColor = "#fff", ...args ) {
-    let [radius, tlr, trr, blr, brr, lineWidth = 0] = args
-    this.ctx.setFillStyle(bgColor);
+  drawRect(content) {
+    let { x, y, width, height, borderColor, backgroundColor = '#fff', radius, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius,lineWidth = 0} = content
+    this.ctx.setFillStyle(backgroundColor);
     this.ctx.beginPath()
-    this.ctx.moveTo(x + (radius || tlr || 0), y);
-    (radius || trr) ? this.ctx.lineTo(x + width - (radius || trr) , y): this.ctx.lineTo(x + width , y);
-    (radius || trr) && this.ctx.arc(x + width - (radius || trr), y + (radius || trr), (radius || trr), 1.5 * Math.PI, 2 * Math.PI, false);
-    (radius || brr) ? this.ctx.lineTo(x + width , y + height - (radius || brr)) : this.ctx.lineTo(x + width, y + height);
-    (radius || brr) && this.ctx.arc(x + width - (radius || brr), y + height - (radius || brr), (radius || brr), 0, 0.5 * Math.PI, false);
-    (radius || blr) ? this.ctx.lineTo(x + (radius || blr), y + height) : this.ctx.lineTo(x, y + height);
-    (radius || blr) && this.ctx.arc(x + (radius || blr), y + height - (radius || blr), (radius || blr), 0.5 * Math.PI, Math.PI, false);
-    (radius || tlr) ? this.ctx.lineTo(x, y + (radius || tlr)) : this.ctx.lineTo(x, y);
-    (radius || tlr) && this.ctx.arc(x + (radius || tlr), y + (radius || tlr), (radius || tlr), Math.PI, 1.5 * Math.PI, false);
+    this.ctx.moveTo(x + (radius || topLeftRadius || 0), y);
+    (radius || topRightRadius)    ?  this.ctx.lineTo(x + width - (radius || topRightRadius) , y): this.ctx.lineTo(x + width , y);
+    (radius || topRightRadius)    && this.ctx.arc(x + width - (radius || topRightRadius), y + (radius || topRightRadius), (radius || topRightRadius), 1.5 * Math.PI, 2 * Math.PI, false);
+    (radius || bottomRightRadius) ?  this.ctx.lineTo(x + width , y + height - (radius || bottomRightRadius)) : this.ctx.lineTo(x + width, y + height);
+    (radius || bottomRightRadius) && this.ctx.arc(x + width - (radius || bottomRightRadius), y + height - (radius || bottomRightRadius), (radius || bottomRightRadius), 0, 0.5 * Math.PI, false);
+    (radius || bottomLeftRadius)  ?  this.ctx.lineTo(x + (radius || bottomLeftRadius), y + height) : this.ctx.lineTo(x, y + height);
+    (radius || bottomLeftRadius)  && this.ctx.arc(x + (radius || bottomLeftRadius), y + height - (radius || bottomLeftRadius), (radius || bottomLeftRadius), 0.5 * Math.PI, Math.PI, false);
+    (radius || topLeftRadius)     ?  this.ctx.lineTo(x, y + (radius || topLeftRadius)) : this.ctx.lineTo(x, y);
+    (radius || topLeftRadius)     && this.ctx.arc(x + (radius || topLeftRadius), y + (radius || topLeftRadius), (radius || topLeftRadius), Math.PI, 1.5 * Math.PI, false);
     this.ctx.fill();
     this.ctx.setLineWidth(lineWidth);
-    this.ctx.setStrokeStyle(color);
+    this.ctx.setStrokeStyle(borderColor);
     this.ctx.stroke();
     this.ctx.draw(true);
     this.drawComplateCount += 1
+    this.extraFunExcuting = false
     this.haveExtraData && this.setDrawStatus()
   }
-  drawCircle() {
-
+  /**
+   * 
+   * @param {*} content 
+   */
+  drawCircle(content) {
+    let { x, y, backgroundColor = 'red', borderStyle, borderColor = backgroundColor, radius, borderWidth = 0, dashedWidth = 2, dashedOffset = 2} = content
+    this.ctx.beginPath()
+    this.ctx.lineWidth = borderWidth
+    borderStyle == 'dashed' && this.ctx.setLineDash([dashedWidth, dashedOffset]);
+    this.ctx.arc(x, y, radius, 0, Math.PI * 2, )
+    this.ctx.setFillStyle(backgroundColor)
+    this.ctx.fill()
+    this.ctx.setStrokeStyle(borderColor)
+    this.ctx.stroke()
+    this.ctx.draw(true)
+    this.drawComplateCount += 1
+    this.extraFunExcuting = false
+    this.haveExtraData && this.setDrawStatus()
+  }
+  /**
+   * 
+   * @param {*} content 
+   */
+  drawLine(content) {
+    let { x, y, width, height = 2, dashedWidth = 5, lineStyle, dashedHeight = 5, dashedOffset = 5, type , color = 'red' } = content
+    this.ctx.beginPath()
+    this.ctx.moveTo(x,y)
+    this.ctx.lineWidth = type == "vertical" ? width : height;
+    lineStyle == 'dashed' && this.ctx.setLineDash([type == "vertical" ? dashedHeight : dashedWidth , dashedOffset]);
+    this.ctx.setStrokeStyle(color)
+    this.ctx.lineTo(type == "vertical" ? x : x + width , type == "vertical" ? y + height: y)
+    this.ctx.stroke()
+    this.ctx.draw(true)
+    this.drawComplateCount += 1
+    this.extraFunExcuting = false
+    this.haveExtraData && this.setDrawStatus()
   }
   /**
    * 渲染文字
@@ -489,6 +560,7 @@ class ShareImageBuilder {
     }
     this.ctx.draw(true)
     this.drawComplateCount += 1
+    this.extraFunExcuting = false
     this.haveExtraData && this.setDrawStatus()
   }
   drawTextWidthPadding(widthOfRow,item, text, x) {
@@ -533,96 +605,37 @@ class ShareImageBuilder {
    * 图片进行高斯模糊
    * @param {} imgData 
    */
-  gaussBlur(imgData, limitArr) {
-    var pixes = imgData.data;
-    var width = imgData.width;
-    var height = imgData.height;
-    var gaussMatrix = [],
-        gaussSum = 0,
-        x, y,
-        r, g, b, a,
-        i, j, k, len;
+  gaussBlur(imgObj) {
+    wx.canvasGetImageData({
+      canvasId: this.canvas,
+      x: 0,
+      y: 0,
+      height: 400,
+      width: 300,
+      success: (imgData) => {
+        let pixes = imgData.data;
+        let width = imgData.width;
+        let height = imgData.height;
+        let gaussMatrix = [],
+            gaussSum = 0,
+            x, y,
+            r, g, b, a,
+            i, j, k, len;
+        let radius = 10;
+        let sigma = 50;
+            a = 1 / (Math.sqrt(2 * Math.PI) * sigma);
+            b = -1 / (2 * sigma * sigma);
+        //生成高斯矩阵
+        for (i = 0, x = -radius; x <= radius; x++, i++){
+            g = a * Math.exp(b * x * x);
+            gaussMatrix[i] = g;
+            gaussSum += g;
 
-    var radius = 10;
-    var sigma = 5;
-
-    a = 1 / (Math.sqrt(2 * Math.PI) * sigma);
-    b = -1 / (2 * sigma * sigma);
-    //生成高斯矩阵
-    for (i = 0, x = -radius; x <= radius; x++, i++){
-        g = a * Math.exp(b * x * x);
-        gaussMatrix[i] = g;
-        gaussSum += g;
-
-    }
-    //归一化, 保证高斯矩阵的值在[0,1]之间
-    for (i = 0, len = gaussMatrix.length; i < len; i++) {
-        gaussMatrix[i] /= gaussSum;
-    }
-    if(limitArr){
-        for(let l=0;l<limitArr.length;l++){
-            let curLimitObj = limitArr[l];
-            let limitConvert = function(val,max){
-                if(val>=0){
-                    return val;
-                }else{
-                    return max+val;
-                }
-            };
-            let minX = curLimitObj.x && curLimitObj.x.min? limitConvert(curLimitObj.x.min, width): 0;
-            let maxX = curLimitObj.x && curLimitObj.x.max? limitConvert(curLimitObj.x.max, width): width;
-            let minY = curLimitObj.y && curLimitObj.y.min? limitConvert(curLimitObj.y.min, height): 0;
-            let maxY = curLimitObj.y && curLimitObj.y.max? limitConvert(curLimitObj.y.max, height): height;
-            //x 方向一维高斯运算
-            for(y = minY; y < maxY; y++){
-                for(x = minX; x<maxX; x++){
-                    r = g = b = a = 0;
-                    gaussSum = 0;
-                    for(j = -radius; j <= radius; j++){
-                        k = x + j;
-                        if(k >= 0 && k < width){//确保 k 没超出 x 的范围
-                            //r,g,b,a 四个一组
-                            i = (y * width + k) * 4;
-                            r += pixes[i] * gaussMatrix[j + radius];
-                            g += pixes[i + 1] * gaussMatrix[j + radius];
-                            b += pixes[i + 2] * gaussMatrix[j + radius];
-                            // a += pixes[i + 3] * gaussMatrix[j];
-                            gaussSum += gaussMatrix[j + radius];
-                        }
-                    }
-                    i = (y * width + x) * 4;
-                    // 除以 gaussSum 是为了消除处于边缘的像素, 高斯运算不足的问题
-                    // console.log(gaussSum)
-                    pixes[i] = r / gaussSum;
-                    pixes[i + 1] = g / gaussSum;
-                    pixes[i + 2] = b / gaussSum;
-                    // pixes[i + 3] = a ;
-                }
-            }
-            //y 方向一维高斯运算
-            for (x = minX; x < maxX; x++) {
-                for (y = minY; y < maxY; y++) {
-                    r = g = b = a = 0;
-                    gaussSum = 0;
-                    for(j = -radius; j <= radius; j++){
-                        k = y + j;
-                        if(k >= 0 && k < height){//确保 k 没超出 y 的范围
-                            i = (k * width + x) * 4;
-                            r += pixes[i] * gaussMatrix[j + radius];
-                            g += pixes[i + 1] * gaussMatrix[j + radius];
-                            b += pixes[i + 2] * gaussMatrix[j + radius];
-                            // a += pixes[i + 3] * gaussMatrix[j];
-                            gaussSum += gaussMatrix[j + radius];
-                        }
-                    }
-                    i = (y * width + x) * 4;
-                    pixes[i] = r / gaussSum;
-                    pixes[i + 1] = g / gaussSum;
-                    pixes[i + 2] = b / gaussSum;
-                }
-            }
         }
-    }else{
+        //归一化, 保证高斯矩阵的值在[0,1]之间
+        for (i = 0, len = gaussMatrix.length; i < len; i++) {
+            gaussMatrix[i] /= gaussSum;
+        }
         //x 方向一维高斯运算
         for (y = 0; y < height; y++) {
             for (x = 0; x < width; x++) {
@@ -671,12 +684,16 @@ class ShareImageBuilder {
                 pixes[i + 2] = b / gaussSum;
             }
         }
-    }
-    return imgData;
+        wx.canvasPutImageData({
+          canvasId: this.canvas,
+          ...imgData,
+          success: (data) => {
+          }
+        })
+      }
+    })
   }
 }
-
-
 
 /***/ })
 
