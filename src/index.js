@@ -4,7 +4,6 @@
  * 使用方法见 https://github.com/zhenliliu/miniprogram-canvas
  */
 export default class ShareImageBuilder {
-
   constructor(page, options) {
     this.options             = options;
     this.page                = page;
@@ -29,6 +28,7 @@ export default class ShareImageBuilder {
     this.haveExcutedObserveFun = false
     this.setCanvasMeasure(this.canvasWidth, this.canvasHeight)
     this.initAllImageInfo()
+    console.log('this.ctx', this.ctx)
   }
   /**
    * 设置画布的大小
@@ -434,8 +434,15 @@ export default class ShareImageBuilder {
       textAlign = 'center' ,
       padding,
       paddingLeft,
-      paddingRight
+      paddingRight,
+      outLineWidth
      } = item
+     let setFontWeight = typeof outLineWidth === 'number'
+    if(setFontWeight) {
+      this.ctx.beginPath()
+      this.ctx.setLineWidth(outLineWidth);
+      this.ctx.setStrokeStyle(color);
+    }
     this.ctx.setTextAlign(textAlign)
     this.ctx.setFontSize(fontSize)
     this.ctx.setFillStyle(color)
@@ -457,8 +464,15 @@ export default class ShareImageBuilder {
     } else if(paddingLeft && paddingRight) {
       this.drawTextWidthPadding(this.canvasWidth - paddingRight - paddingLeft, item, text, paddingLeft)
     } else {
-      this.ctx.fillText(text, x, y)
+      if(setFontWeight) {
+        this.ctx.strokeText(text, x, y)
+      }else{
+        this.ctx.fillText(text, x, y)
+      }
+      
     }
+    this.ctx.stroke()
+    this.ctx.setFillStyle(color)
     this.ctx.draw(true)
     this.drawComplateCount += 1
     this.extraFunExcuting = false
@@ -468,12 +482,17 @@ export default class ShareImageBuilder {
     let {
       fontSize = 20, 
       lineHeight = 10,
+      outLineWidth,
       y = 0, 
      } = item
     let charCountOfRow = Math.floor(widthOfRow/fontSize)
     let charGroup      = Math.ceil(text.length / charCountOfRow)
     for(let i = 0; i < charGroup; i ++) {
-      this.ctx.fillText(text.substring(i * charCountOfRow, (i + 1) * charCountOfRow), x,  i > 0 ? y + i * (fontSize + lineHeight) : y)
+      if(typeof outLineWidth === 'number') {
+        this.ctx.strokeText(text.substring(i * charCountOfRow, (i + 1) * charCountOfRow), x,  i > 0 ? y + i * (fontSize + lineHeight) : y)
+      } else {
+        this.ctx.fillText(text.substring(i * charCountOfRow, (i + 1) * charCountOfRow), x,  i > 0 ? y + i * (fontSize + lineHeight) : y)
+      }
     }
   }
   /**

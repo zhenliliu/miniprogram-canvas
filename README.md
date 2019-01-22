@@ -30,14 +30,14 @@
       textArr: [
         {drawType: 'text', text: '感谢', color: '#888889', x: 60, y: 180, zIndex: 33, fontSize: 28,textAlign: 'left'},
         // 如果文本行内需要填充动态数据， 则填充部分使用 ‘${10}$’  替代， 数字则为需要填充的文字个数， 长度可能不是很准确，根据应用场景定义
-        {drawType: 'text', text: '第${10}$位', color: '#888889', x: 60, y: 240, zIndex: 33, fontSize: 28,textAlign: 'left'},
+        {drawType: 'text', text: '第${10}$位', color: '#888889', x: 60, y: 240, zIndex: 33, fontSize: 28,textAlign: 'left', outLineWidth: 10},
         {drawType: 'text', text: '为《${18}$》捐献爱心的人士', color: '#888889', x: 60, y: 290, zIndex: 33, fontSize: 28,textAlign: 'left'},
         {drawType: 'text', text: '长按或扫描二维码', color: '#666', x: 210, y: 1100, zIndex: 34, fontSize: 30, textAlign: 'left'},
       ],
       // 需要绘制的矩形的元素
       rectArr: [
-        {drawType: 'rect',x: 10, y: 10, width: 730, height: 1314, color: '#303135', bgColor: '#FFF',  zIndex: 0, radius: 20},
-        {drawType: 'rect',x: 10, y: 10, width: 730, height: 1000, color: '#303135', bgColor: '#303135',  zIndex: 1, trr: 20, trr: 20},
+        {drawType: 'rect',x: 10, y: 10, width: 730, height: 1314, borderColor: '#303135', backgroundColor: '#FFF',  zIndex: 0, radius: 20},
+        {drawType: 'rect',x: 10, y: 10, width: 730, height: 1000, borderColor: '#303135', backgroundColor: '#303135',  zIndex: 1, trr: 20, trr: 20},
       ],
       
   })
@@ -52,7 +52,7 @@
     createImage() {
       // 所需要绘制的动态数据
       this.canvas.setExtraData([
-        {drawType: 'text', text: "测试", color: '#fff', x: 140, y: 180, zIndex: 33, fontSize: 28,textAlign: 'left'},
+        {drawType: 'text', text: "测试", color: '#fff', x: 140, y: 180, zIndex: 33, fontSize: 35,textAlign: 'left', outLineWidth: 5},
         {drawType: 'text', text: '动态数据', color: '#b78f53', x: 410, y: 240, zIndex: 33, fontSize: 28,textAlign: 'left'},
         {drawType: 'text', text: '绘制动态数据', color: '#888889', x: 120, y: 290, zIndex: 33, fontSize: 28,textAlign: 'left'},
         {drawType: 'text', text: '1.99', color: 'red', x: 265, y: 1162, zIndex: 34, fontSize: 26, textAlign: 'left'},
@@ -74,8 +74,8 @@
 属性 | 元素 | 值 | 值类型 | 必填 | 备注
 ----|------|-------|-------|---------|----
 drawType   |image、text、rect|'image'、'text'、'rect'|String|是|渲染起始x坐标
-x   |image、text、rect|缺省值为0|Number|是|渲染起始x坐标
-y   |image、text、rect|缺省值为0|Number|是|渲染起始y坐标
+x   |image、text、rect|缺省值为0|Number|否|渲染起始x坐标
+y   |image、text、rect|缺省值为0|Number|否|渲染起始y坐标
 height  |image、text、rect|缺省值为元素高度|Number|是|渲染元素的高度
 width   |image、text、rect|缺省值为元素宽度|Number|是|渲染元素的宽度
 zIndex  |image、text、rect|0|Number|否|渲染元素的层级，值越大层级越高
@@ -103,18 +103,19 @@ topRightRadius|0|Number|否|矩形右上角圆角半径， radius存在时此值
 bottomLeftRadius|0|Number|否|矩形左下角圆角半径， radius存在时此值无效
 bottomRightRadius|0|Number|否|矩形右下角圆角半径， radius存在时此值无效
 borderColor|-----|String|否|边框的颜色
-backgroundColor|-----|Number|否|填充的颜色
+backgroundColor|-----|String|否|填充的颜色
 
 
 #### text
 
 属性 | 默认值 | 值类型 | 必填 | 备注
 ----|-------|-------|---------|----
-text|-----|String|是|要填充的文字
-color|#000|String|否|字体的颜色
+text||String|是|要填充的文字
+color|'#000'|String|否|字体的颜色
 fontSize|20|Number|否|字体大小
 textAlign|'center'|String|否|字体对其方式
-lineHeight| 10 |String|否|行间距
-padding| 0 |String|否|文字距离画布两边的内边距
-paddingLeft| 0 |String|否|文字距离画布左边的内边距，设置padding后此值无效
-padding| 0 |String|否|文字距离画布两边的内边距，设置padding后此值无效
+lineHeight| 10 |Number|否|行间距
+padding| 0 |Number|否|文字距离画布两边的内边距
+paddingLeft| 0 |Number|否|文字距离画布左边的内边距，设置padding后此值无效
+padding| 0 |Number|否|文字距离画布两边的内边距，设置padding后此值无效
+outLineWidth| 0 |Number|否|文字的描边宽度，可与fontSize搭配实现fontWeight的效果
