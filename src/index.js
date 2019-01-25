@@ -28,7 +28,6 @@ export default class ShareImageBuilder {
     this.haveExcutedObserveFun = false
     this.setCanvasMeasure(this.canvasWidth, this.canvasHeight)
     this.initAllImageInfo()
-    console.log('this.ctx', this.ctx)
   }
   /**
    * 设置画布的大小
@@ -44,7 +43,6 @@ export default class ShareImageBuilder {
   excuteExtraFun() {
     if(!this.extraFunExcuting) {
       let options = this.extraQueue.shift()
-      console.log('extraFunExcuting options', options)
       if(!options) return;
       this.extraFunExcuting = true
       if( options.drawType === 'text' || options.drawType === 'rect' || options.drawType === 'line' || options.drawType === 'circle'){
@@ -74,20 +72,38 @@ export default class ShareImageBuilder {
   setExtraData(options) {
     if(Array.isArray(options)) {
       if(!options.length) return ;
+      options = this.checkImageVaild(options)
       this.extraQueue.push(...options)
-      this.renderElementLength += options.length
-      this.haveExtraData = true;
       let intervalID = setInterval(() => {
         if(this.drawComplate) {
+          this.renderElementLength += options.length
+          this.haveExtraData = true;
           clearInterval(intervalID)
           intervalID = null
           this.excuteExtraFun()
         }
+        setTimeout(() => {
+          clearInterval(intervalID)
+          intervalID= null
+        }, this.options.timeout)
       },10);
     } else {
       this.extraData = false
       console.error('options需要为Array类型，数据格式不正确！')
     }
+  }
+  /**
+   * 剔除URL不合法的图片元素
+   * @param {Array} options 
+   */
+  checkImageVaild(options) {
+    for(let i = 0; i < options.length; i++) {
+      if(options[i].drawType === 'image' && (!/(^(http|https|\.\/))/.test(options[i].url) || !options[i].url.length)){
+        let errorObj = options.splice(i,1)
+        console.warn("数据无效", JSON.stringify(errorObj))
+      }
+    }
+    return options
   }
   /**
    * 获取文本宽度
@@ -101,7 +117,7 @@ export default class ShareImageBuilder {
    */
   initAllImageInfo() {
     let { imgArr = [] } = this.options
-    imgArr = this.sort(imgArr)
+    imgArr = this.sort(this.checkImageVaild(imgArr))
     for(let i = 0, j = imgArr.length; i < j ; i++) {
       if(imgArr[i].url.match(/(http:\/\/|https:\/\/)/)){
         this.formatImgsInfoArr[i] = this.createImageDownloadPromise(imgArr[i])
@@ -170,7 +186,8 @@ export default class ShareImageBuilder {
       this.formatImgsInfoArr = arr
       this.initCanvas()
     }).catch(e => {
-      console.warn('网络开小差了')
+      console.log(e)
+      console.warn('加载图片失败')
     })
   }
   /**
